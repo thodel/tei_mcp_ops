@@ -15,7 +15,7 @@
 
 set -eu
 
-printf '    # ── SSRQ MCP and friends — generated, all five streamable HTTP ──\n'
+printf '    # ── SSRQ MCP and friends — generated, all six streamable HTTP ──\n'
 
 # Two servers whose blocks differ from the pattern live in snippets, included
 # here so the generated range keeps them: the ATR operations MCP (OAuth, four
@@ -24,9 +24,13 @@ printf '    # ── SSRQ MCP and friends — generated, all five streamable HTT
 # snippets are maintained on the host, not in this repository.
 printf '    include /etc/nginx/snippets/mcp-atr.conf;\n'
 printf '    include /etc/nginx/snippets/mcp-wd-pre1500.conf;\n'
+# outremer's MCP (outremer#131, dh user unit :8014), also from a host snippet.
+printf '    include /etc/nginx/snippets/mcp-outremer.conf;   # outremer#131, MCP at /mcp/outremer/mcp (dh user unit, :8014)\n'
 printf '\n'
 
-for s in ssrq:8002 eos:8000 kf:8001 hls:8004 hbls:8003; do
+# mls (Musiklexikon der Schweiz) runs on idhefix and arrives through
+# mcp-tunnel-nginx@8015 like the five before it (ch-h-bot#541).
+for s in ssrq:8002 eos:8000 kf:8001 hls:8004 hbls:8003 mls:8015; do
     n=${s%%:*}
     p=${s##*:}
     printf '    location /mcp/%s/mcp {\n' "$n"
@@ -82,9 +86,13 @@ printf '        proxy_pass http://127.0.0.1:8013;\n'
 printf '        proxy_redirect off;\n'
 printf '    }\n'
 
-# The live file carries this note above the catch-all; the sed's range ends on
-# the `location / {` line, so the note has to be restored from here too.
-printf '    # Nothing is served at the root. TEI Publisher answered here until 2026-09-24\n'
-printf '    # (adr/0001-headroom.md); proxying to its dead port made every unmatched path\n'
-printf '    # answer 502, which reads as "tei is broken" to a monitor and to a person.\n'
+# The live file carries this note and the root redirect above the catch-all
+# (12.10.2026); the sed's range ends on the `location / {` line, so both have
+# to be restored from here too, or the next deploy drops the redirect.
+printf '    # The bare root forwards to the Outremer explorer (12.10.2026). Every other\n'
+printf '    # unmatched path still answers 404: TEI Publisher answered here until\n'
+printf '    # 2026-09-24 (adr/0001-headroom.md); proxying to its dead port made every\n'
+printf '    # unmatched path answer 502, which reads as "tei is broken" to a monitor\n'
+printf '    # and to a person.\n'
+printf '    location = / {\n        return 302 /outremer/;\n    }\n'
 printf '    location / {\n'

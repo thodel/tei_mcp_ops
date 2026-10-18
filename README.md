@@ -14,15 +14,16 @@ and the landing pages.
 | HLS | [hls_mcp](https://github.com/thodel/hls_mcp) | idhefix | 8004 | `/mcp/hls/mcp` | `/mcp/hls` | none |
 | HBLS | [hbls_mcp](https://github.com/thodel/hbls_mcp) | idhefix | 8003 | `/mcp/hbls/mcp` | `/mcp/hbls` | none |
 | EOS / HGB Basel | [eos_mcp](https://github.com/thodel/eos_mcp) | idhefix | 8000 | `/mcp/eos/mcp` | `/mcp/eos` | none |
+| Musiklexikon der Schweiz | mls_mcp (private) | idhefix | 8015 | `/mcp/mls/mcp` | `/mcp/mls` | none |
 | Wikidata pre-1500 | [wikidata_pre1500_mcp](https://github.com/thodel/wikidata_pre1500_mcp) | idhefix | 8011 | `/mcp/wd-pre1500/mcp` | — | none |
 | Swiss libraries | docker container `swisslib-mcp` on tei (image `swisslib-mcp:latest`, no repository under `thodel`) | tei | 8005 | `/mcp/swiss-lib/mcp` | — | none |
 | ATR operations (starts jobs) | [agentic_historian](https://github.com/thodel/agentic_historian) `mcp_atr` | tei | — | `/mcp/atr/mcp` | — | OAuth |
 | ATR results (read-only) | [training-atr-models](https://github.com/thodel/training-atr-models) `atr_results_mcp` | **asteraix** | 8013 | `/mcp/atr-results/mcp` | — | `auth_basic`, user `atr-results` |
 
-The five in the first block are the generated ones: identical nginx blocks,
+The six in the first block are the generated ones: identical nginx blocks,
 **mcp 2.0** (`MCPServer`), streamable HTTP, no authentication. The others differ
-in one way each and are documented where they differ: the two `include`d snippets
-(`mcp-atr.conf`, `mcp-wd-pre1500.conf`, maintained on the host under
+in one way each and are documented where they differ: the three `include`d snippets
+(`mcp-atr.conf`, `mcp-wd-pre1500.conf`, `mcp-outremer.conf`, maintained on the host under
 `/etc/nginx/snippets/`), the hand-written swiss-lib block after the catch-all,
 and the atr-results block, which the generator emits with its `auth_basic` lines
 (training-atr-models#214).
@@ -70,7 +71,7 @@ linger on for dh, so the units survive a logout). Measured 11.10.2026:
 
 | Unit (dh user unit) | Local end on tei | Remote end | Box | Serves |
 |---|---|---|---|---|
-| `mcp-tunnel-nginx@8000,8001,8002,8003,8004` | `127.0.0.1:%i` | `172.17.0.1:%i` (docker bridge) | idhefix `130.92.59.240` | the five generated servers |
+| `mcp-tunnel-nginx@8000,8001,8002,8003,8004,8015` | `127.0.0.1:%i` | `172.17.0.1:%i` (docker bridge) | idhefix `130.92.59.240` | the six generated servers (8015 = mls, ch-h-bot#541) |
 | `mcp-tunnel-nginx@8011` | `127.0.0.1:8011` | `172.17.0.1:8011` | idhefix | Wikidata pre-1500 |
 | `mcp-tunnel-asteraix@8013` | `127.0.0.1:8013` | `127.0.0.1:8013` (the unit binds loopback, no docker) | **asteraix** `130.92.59.242` | atr-results |
 | `mcp-tunnel@8006,8007,8008,8009` | `172.17.0.1:%i` | `172.17.0.1:%i` | idhefix, **although the unit says "asterAIx"** | nothing routed — see [#1](https://github.com/thodel/tei_mcp_ops/issues/1) |
@@ -125,18 +126,27 @@ checked 11.10.2026), and editing it changes nothing nginx serves.
 CONF=/etc/nginx/sites-enabled/tei.dh.unibe.ch; sudo mkdir -p /root/nginx-backups && sudo cp -a "$CONF" /root/nginx-backups/tei.$(date +%Y%m%d-%H%M) && sudo sed -i -e "/SSRQ MCP/r $PWD/nginx/mcp-sections.conf" -e '/SSRQ MCP/,/^    location \/ {/d' "$CONF" && sudo nginx -t && sudo nginx -T | grep -c "location /mcp/[a-z0-9-]*/mcp"
 ```
 
-Prints `8` when it worked (five generated, atr-results, wd-pre1500 from its
-snippet, swiss-lib after the catch-all; the ATR operations snippet matches no
+Prints `10` when it worked (six generated, atr-results, wd-pre1500 and outremer
+from their snippets, swiss-lib after the catch-all; the ATR operations snippet matches no
 `/mcp/<name>/mcp` line). Then `sudo systemctl reload nginx`.
 
 The command is idempotent: the fragment's first line carries the `SSRQ MCP` anchor the
 sed deletes, and its last line restores the `location / {` the range consumes, so
 running it twice produces the same file.
 
-What the range holds besides the five generated servers, and therefore what the
-generator has to emit or the next deploy silently drops: the two `include`
+What the range holds besides the six generated servers, and therefore what the
+generator has to emit or the next deploy silently drops: the three `include`
 lines for the snippets, the atr-results block with its `auth_basic` lines, and
-the note above `location / {`. `make-sections.sh` emits all of them; on
+the note and the root redirect (`location = /` → `/outremer/`, 12.10.2026) above
+`location / {`. Both of the last were missing from the generator until
+18.10.2026, when a diff against the live range caught them before a deploy —
+diff the live range against the fragment before every deploy:
+
+```bash
+sed -n "/SSRQ MCP/,/^    location \/ {/p" /etc/nginx/sites-enabled/tei.dh.unibe.ch | diff - nginx/mcp-sections.conf
+```
+
+`make-sections.sh` emits all of them. On
 11.10.2026 its output matched the live range line for line, except that the
 hand-inserted atr-results block sat before the hls block and the generator puts
 it last — the next deploy moves it, which changes nothing.

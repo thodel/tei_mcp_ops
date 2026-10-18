@@ -43,6 +43,12 @@ SERVERS = {
             "https://github.com/thodel/eos_persons",
             "github.com/thodel/eos_persons",
             "https://github.com/thodel/eos_mcp"),
+    # mls_mcp is a private repository: no GitHub link on a public page.
+    "mls": ("MLS MCP Server",
+            "Musiklexikon der Schweiz — Lexika von 1874 bis heute",
+            "https://repository.dasch.swiss/dpe/projects/0807",
+            "repository.dasch.swiss (DaSCH 0807)",
+            None),
 }
 
 PROTOCOL = "2025-06-18"
@@ -149,7 +155,7 @@ def render(name, client, tools, resources, templates, stats):
     version = client.info.get("version") or ""
     return TEMPLATE.format(
         name=e(name), heading=e(heading), tagline=e(tagline), endpoint=e(endpoint),
-        proj_url=e(proj_url), proj_label=e(proj_label), github=e(github),
+        proj_url=e(proj_url), proj_label=e(proj_label), github_link=(f'<a href="{e(github)}">GitHub</a>' if github else ''),
         stats=stat_tiles(stats), year=e(year), rows=rows,
         resources=res_html or '      <span class="resource-uri">—</span>',
         server_name=e(client.info.get("name") or name), version=e(version),
@@ -311,7 +317,7 @@ TEMPLATE = """<!DOCTYPE html>
 <footer>
   <a href="{proj_url}">Project Website ↗</a>
   <a href="{base}">tei.dh.unibe.ch</a>
-  <a href="{github}">GitHub</a>
+  {github_link}
   <span style="font-size:0.85rem; color:var(--muted);">{server_name} v{version}</span>
 </footer>
 
