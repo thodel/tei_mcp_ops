@@ -146,7 +146,7 @@ diff the live range against the fragment before every deploy:
 sed -n "/SSRQ MCP/,/^    location \/ {/p" /etc/nginx/sites-enabled/tei.dh.unibe.ch | diff - nginx/mcp-sections.conf
 ```
 
- `make-sections.sh` emits all of them; on
+`make-sections.sh` emits all of them. On
 11.10.2026 its output matched the live range line for line, except that the
 hand-inserted atr-results block sat before the hls block and the generator puts
 it last — the next deploy moves it, which changes nothing.
