@@ -15,7 +15,7 @@
 
 set -eu
 
-printf '    # ── SSRQ MCP and friends — generated, all five streamable HTTP ──\n'
+printf '    # ── SSRQ MCP and friends — generated, all six streamable HTTP ──\n'
 
 # Two servers whose blocks differ from the pattern live in snippets, included
 # here so the generated range keeps them: the ATR operations MCP (OAuth, four
@@ -26,7 +26,9 @@ printf '    include /etc/nginx/snippets/mcp-atr.conf;\n'
 printf '    include /etc/nginx/snippets/mcp-wd-pre1500.conf;\n'
 printf '\n'
 
-for s in ssrq:8002 eos:8000 kf:8001 hls:8004 hbls:8003; do
+# mls (Musiklexikon der Schweiz) runs on idhefix and arrives through
+# mcp-tunnel-nginx@8015 like the five before it (ch-h-bot#541).
+for s in ssrq:8002 eos:8000 kf:8001 hls:8004 hbls:8003 mls:8015; do
     n=${s%%:*}
     p=${s##*:}
     printf '    location /mcp/%s/mcp {\n' "$n"
