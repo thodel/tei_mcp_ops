@@ -22,8 +22,8 @@ and the landing pages.
 
 The six in the first block are the generated ones: identical nginx blocks,
 **mcp 2.0** (`MCPServer`), streamable HTTP, no authentication. The others differ
-in one way each and are documented where they differ: the two `include`d snippets
-(`mcp-atr.conf`, `mcp-wd-pre1500.conf`, maintained on the host under
+in one way each and are documented where they differ: the three `include`d snippets
+(`mcp-atr.conf`, `mcp-wd-pre1500.conf`, `mcp-outremer.conf`, maintained on the host under
 `/etc/nginx/snippets/`), the hand-written swiss-lib block after the catch-all,
 and the atr-results block, which the generator emits with its `auth_basic` lines
 (training-atr-models#214).
@@ -126,8 +126,8 @@ checked 11.10.2026), and editing it changes nothing nginx serves.
 CONF=/etc/nginx/sites-enabled/tei.dh.unibe.ch; sudo mkdir -p /root/nginx-backups && sudo cp -a "$CONF" /root/nginx-backups/tei.$(date +%Y%m%d-%H%M) && sudo sed -i -e "/SSRQ MCP/r $PWD/nginx/mcp-sections.conf" -e '/SSRQ MCP/,/^    location \/ {/d' "$CONF" && sudo nginx -t && sudo nginx -T | grep -c "location /mcp/[a-z0-9-]*/mcp"
 ```
 
-Prints `9` when it worked (six generated, atr-results, wd-pre1500 from its
-snippet, swiss-lib after the catch-all; the ATR operations snippet matches no
+Prints `10` when it worked (six generated, atr-results, wd-pre1500 and outremer
+from their snippets, swiss-lib after the catch-all; the ATR operations snippet matches no
 `/mcp/<name>/mcp` line). Then `sudo systemctl reload nginx`.
 
 The command is idempotent: the fragment's first line carries the `SSRQ MCP` anchor the
@@ -135,9 +135,18 @@ sed deletes, and its last line restores the `location / {` the range consumes, s
 running it twice produces the same file.
 
 What the range holds besides the six generated servers, and therefore what the
-generator has to emit or the next deploy silently drops: the two `include`
+generator has to emit or the next deploy silently drops: the three `include`
 lines for the snippets, the atr-results block with its `auth_basic` lines, and
-the note above `location / {`. `make-sections.sh` emits all of them; on
+the note and the root redirect (`location = /` → `/outremer/`, 12.10.2026) above
+`location / {`. Both of the last were missing from the generator until
+18.10.2026, when a diff against the live range caught them before a deploy —
+diff the live range against the fragment before every deploy:
+
+```bash
+sed -n "/SSRQ MCP/,/^    location \/ {/p" /etc/nginx/sites-enabled/tei.dh.unibe.ch | diff - nginx/mcp-sections.conf
+```
+
+ `make-sections.sh` emits all of them; on
 11.10.2026 its output matched the live range line for line, except that the
 hand-inserted atr-results block sat before the hls block and the generator puts
 it last — the next deploy moves it, which changes nothing.
