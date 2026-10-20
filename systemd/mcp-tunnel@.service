@@ -1,0 +1,32 @@
+[Unit]
+Description=SSH tunnel to the MCP server on idhefix (130.92.59.240), port %i, for the bot container
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Why a tunnel and not a plain HTTP call across the network: these servers
+# carry In-Copyright full text. On tei they bound the docker bridge so the text
+# could never leave the host; idhefix has no TLS (nginx listens on port 80
+# only), so an unencrypted cross-host call would be a step backwards. The
+# tunnel restores the old guarantee: the servers bind the docker bridge on idhefix, and
+# only a process on tei can reach them.
+#
+# The local end binds the docker bridge (172.17.0.1), NOT loopback: the bot
+# runs in a container and reaches the host over the bridge, never over the
+# host's loopback. Binding 127.0.0.1 here would leave the tunnel up and the bot
+# unable to use it — the same trap the servers' own run.sh warns about, which
+# once left three providers registered, "queried", and never answering.
+#
+# One instance per port, not one tunnel for all three, so the services can be
+# migrated one at a time — a shared tunnel refuses to start (ExitOnForwardFailure)
+# while any of the ports is still served locally here.
+#
+# The key is restricted on the far side to port-forwarding for exactly these
+# three ports: no shell, no pty, no agent forwarding.
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -i /home/dh/.ssh/id_ed25519_idhefix_mcp -L 172.17.0.1:%i:172.17.0.1:%i tobias@130.92.59.240
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
