@@ -1,0 +1,33 @@
+# /home/dh/.config/systemd/user/mcp-tunnel-nginx@.service
+[Unit]
+Description=SSH tunnel to the MCP server on idhefix (130.92.59.240), port %i, for nginx
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Like mcp-tunnel@, with one difference that matters: the local end binds
+# **loopback**, not the docker bridge. These are the *public* providers, reached
+# through nginx on this host — and nginx's proxy_pass says 127.0.0.1:%i. Binding
+# the bridge instead would leave the tunnel up and the public path returning 502.
+#
+# The bridge variant (mcp-tunnel@) stays for the internal providers, which the
+# bot's container reaches over the bridge and nginx never sees.
+#
+# Both ends use the same port number, so the nginx configuration does not change
+# when a provider moves: 127.0.0.1:%i here, 172.17.0.1:%i on idhefix, and the
+# key over there is restricted to exactly those ports with permitopen.
+#
+# ExitOnForwardFailure is what makes a migration safe: while the provider is
+# still served locally on this port, the tunnel refuses to start instead of
+# silently doing nothing.
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=20 -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=accept-new \
+  -i /home/dh/.ssh/id_ed25519_idhefix_mcp \
+  -L 127.0.0.1:%i:172.17.0.1:%i tobias@130.92.59.240
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

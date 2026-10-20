@@ -1,0 +1,24 @@
+[Unit]
+Description=SSH tunnel to the MCP server on asteraix (130.92.59.242), port %i, for nginx
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Like mcp-tunnel-nginx@ (idhefix), with the target really being asteraix
+# (dhserver03, 130.92.59.242), not the box the misnamed mcp-tunnel@ units point to
+# (tei_mcp_ops#1). The MCP on asteraix binds loopback, so the remote end is
+# 127.0.0.1:%i there; the local end binds loopback for nginx (proxy_pass 127.0.0.1:%i).
+# The key is restricted on asteraix to exactly this port (restrict,port-forwarding,
+# permitopen="127.0.0.1:%i"). ExitOnForwardFailure: refuses to start while the
+# local port is still taken, instead of silently doing nothing.
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=20 -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=accept-new \
+  -i /home/dh/.ssh/id_ed25519_asteraix \
+  -L 127.0.0.1:%i:127.0.0.1:%i tobias@130.92.59.242
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -74,7 +74,7 @@ linger on for dh, so the units survive a logout). Measured 11.10.2026:
 | `mcp-tunnel-nginx@8000,8001,8002,8003,8004,8015` | `127.0.0.1:%i` | `172.17.0.1:%i` (docker bridge) | idhefix `130.92.59.240` | the six generated servers (8015 = mls, ch-h-bot#541) |
 | `mcp-tunnel-nginx@8011` | `127.0.0.1:8011` | `172.17.0.1:8011` | idhefix | Wikidata pre-1500 |
 | `mcp-tunnel-asteraix@8013` | `127.0.0.1:8013` | `127.0.0.1:8013` (the unit binds loopback, no docker) | **asteraix** `130.92.59.242` | atr-results |
-| `mcp-tunnel@8006,8007,8008,8009` | `172.17.0.1:%i` | `172.17.0.1:%i` | idhefix, **although the unit says "asterAIx"** | nothing routed — see [#1](https://github.com/thodel/tei_mcp_ops/issues/1) |
+| `mcp-tunnel@8006,8007,8008,8009` | `172.17.0.1:%i` (docker bridge) | `172.17.0.1:%i` | idhefix | the bot's **internal** providers — dodis, infoclio, e-periodica, bsg — which the ch-h-bot api container reaches as `host.docker.internal:<port>`; no nginx route on purpose (In Copyright, ch-h-bot#30) |
 
 Not tunnelled: 8005 (the swisslib container on tei) and the ATR operations MCP
 (a tei process behind its own snippet).
@@ -90,8 +90,16 @@ Each key is restricted on the far box to its port(s):
 `permitopen="127.0.0.1:8013"` (or the bridge address) **and `command="/bin/false"`**.
 `restrict` alone forbids pty, agent and X11 forwarding, but **not a command** —
 the first atr-results key test ran `id` on asteraix until the forced command was
-added (training-atr-models#214). The four idhefix keys should be checked for the
-same (#1).
+added (training-atr-models#214). The idhefix side has **one** key for all eleven
+tunnels, `~/.ssh/id_ed25519_idhefix_mcp` on tei (until 20.10.2026 misnamed
+`id_ed25519_asterAIx`, #1), and its line in `authorized_keys` on idhefix carries
+`command="/bin/false",restrict,port-forwarding` and one `permitopen` per port
+(8000–8004, 8006–8009, 8011, 8015; checked 19.10.2026). A new port is a new
+`permitopen` there before the unit on tei can start.
+
+The three templates are kept in [`systemd/`](systemd/) as deployed on tei
+(20.10.2026); install with `cp systemd/<name>@.service ~/.config/systemd/user/
+&& systemctl --user daemon-reload && systemctl --user enable --now <name>@<port>`.
 
 Adding a server on another box, in order: the server binds loopback on its port
 over there (mounted at its public path) → a new ed25519 key on tei, its public
